@@ -4,9 +4,9 @@
 
 > "방금 운이 나빴던 건가, pity가 낮은 건가?" 더 이상 추측하지 마세요 — 진로 결정 전에 실제 숫자를 보여드립니다.
 
-| 일반 전투 노드 (~73%) | 엘리트 노드 (50%) |
+| 일반 전투 노드 (50%) | 엘리트 노드 (~73%) |
 |---|---|
-| ![73% 라임색 배지가 붙은 일반 노드](docs/screenshots/monster-badge.png) | ![50% 노란색 배지가 붙은 엘리트 노드](docs/screenshots/elite-badge.png) |
+| ![50% 노란색 배지가 붙은 일반 노드](docs/screenshots/monster-badge.png) | ![73% 라임색 배지가 붙은 엘리트 노드](docs/screenshots/elite-badge.png) |
 
 [English README](README.md)
 

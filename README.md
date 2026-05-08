@@ -4,9 +4,9 @@ A **Slay the Spire 2** mod that shows the **potion drop probability** for each t
 
 > No more "did I just get unlucky, or is the pity counter low?" — see the actual number before you commit to a path.
 
-| Monster node (~73%) | Elite node (50%) |
+| Monster node (50%) | Elite node (~73%) |
 |---|---|
-| ![monster node with 73% lime badge](docs/screenshots/monster-badge.png) | ![elite node with 50% yellow badge](docs/screenshots/elite-badge.png) |
+| ![monster node with 50% yellow badge](docs/screenshots/monster-badge.png) | ![elite node with 73% lime badge](docs/screenshots/elite-badge.png) |
 
 [한국어 README](README.ko.md)
 
