@@ -25,6 +25,19 @@ internal static class MapBadgeService
     private static readonly bool _disabled =
         System.Environment.GetEnvironmentVariable("STS2_POTION_DROP_CHANCE_DISABLED") == "1";
 
+    /// <summary>
+    /// When true, suppresses the badge on Unknown (?) map nodes. Toggled at runtime
+    /// by <see cref="ModConfigBridge"/> when the ModConfig framework is installed.
+    /// </summary>
+    internal static volatile bool HideUnknownNodes;
+
+    /// <summary>
+    /// Set by <see cref="MapBadgeOverlayWatcher"/> while any modal popup
+    /// (Pause menu, Settings, confirm dialogs) is open — keeps the badge from
+    /// bleeding through UI that lives on a different CanvasLayer.
+    /// </summary>
+    private static volatile bool _globalSuppress;
+
     // Lazily resolved — NMapScreen.IsTraveling visibility (public vs internal)
     // isn't known at compile time, so we read it via reflection to stay robust.
     private static MethodInfo? _isTravelingGetter;
@@ -48,6 +61,9 @@ internal static class MapBadgeService
             var me = LocalContext.GetMe(state.Players);
             if (me == null) { HideContainer(nmp); return; }
 
+            if (HideUnknownNodes && nmp.Point.PointType == MapPointType.Unknown)
+            { HideContainer(nmp); return; }
+
             var results = PotionDropCalculator.ComputeAll(me, nmp.Point, state);
             if (results.Count == 0) { HideContainer(nmp); return; }
 
@@ -57,7 +73,7 @@ internal static class MapBadgeService
             bool showTypeIcon = nmp.Point.PointType == MapPointType.Unknown;
             foreach (var r in results)
                 container.AddChild(BuildRow(r, showTypeIcon, nmp.GetTree()));
-            container.Visible = true;
+            container.Visible = !_globalSuppress;
         }
         catch (Exception ex)
         {
@@ -72,10 +88,12 @@ internal static class MapBadgeService
 
         // Anchor to node's right-center so the badge stays glued to the node regardless of icon size.
         // GrowVertical=Both makes the VBox expand symmetrically around the anchor → vertically centered.
+        // ZIndex stays low (1) so any modal/popup in the same CanvasLayer paints over us; without
+        // this, popups like the in-game options panel would render *below* the badge.
         var vbox = new VBoxContainer
         {
             Name = ContainerName,
-            ZIndex = 100,
+            ZIndex = 1,
             MouseFilter = Control.MouseFilterEnum.Ignore,
             AnchorLeft = 1.0f,
             AnchorRight = 1.0f,
@@ -198,6 +216,54 @@ internal static class MapBadgeService
                 vbox.Visible = false;
             else if (child.GetChildCount() > 0)
                 HideAllBadgesUnder(child);
+        }
+    }
+
+    /// <summary>
+    /// Called by <see cref="MapBadgeOverlayWatcher"/> on every modal-state edge.
+    /// On suppress→true, hide every badge container in one pass. On suppress→false,
+    /// re-run <see cref="EnsureBadgeUpdated"/> on each NMapPoint so per-node decisions
+    /// (e.g., <see cref="HideUnknownNodes"/>) are honored — a blanket Visible=true
+    /// would resurrect intentionally hidden containers.
+    /// </summary>
+    public static void SetGlobalSuppress(bool suppress, SceneTree? tree)
+    {
+        _globalSuppress = suppress;
+        if (tree?.Root == null) return;
+        if (suppress)
+            SetVisibilityUnder(tree.Root, false);
+        else
+            RefreshAllUnder(tree.Root);
+    }
+
+    private static void SetVisibilityUnder(Node root, bool visible)
+    {
+        foreach (var child in root.GetChildren())
+        {
+            if (child.Name == ContainerName && child is VBoxContainer vbox)
+                vbox.Visible = visible;
+            else if (child.GetChildCount() > 0)
+                SetVisibilityUnder(child, visible);
+        }
+    }
+
+    /// <summary>
+    /// Forces every badge in the SceneTree to re-run <see cref="EnsureBadgeUpdated"/>.
+    /// Use when a setting (e.g., <see cref="HideUnknownNodes"/>) changes and we need
+    /// the result reflected without waiting for the next natural visual refresh.
+    /// </summary>
+    public static void RefreshAllBadges(SceneTree? tree)
+    {
+        if (tree?.Root == null) return;
+        RefreshAllUnder(tree.Root);
+    }
+
+    private static void RefreshAllUnder(Node root)
+    {
+        foreach (var child in root.GetChildren())
+        {
+            if (child is NNormalMapPoint nmp) EnsureBadgeUpdated(nmp);
+            if (child.GetChildCount() > 0) RefreshAllUnder(child);
         }
     }
 

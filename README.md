@@ -23,6 +23,7 @@ A **Slay the Spire 2** mod that shows the **potion drop probability** for each t
 - **Travelable nodes only** — badges show on nodes you can advance to *next*, not on the whole map
 - **Local & read-only** — no game state mutation, no network sync, no impact on other players
 - The manifest declares `"affects_gameplay": false` — safe to leave installed during multiplayer
+- **Optional ModConfig support** — if [ModConfig](https://www.nexusmods.com/slaythespire2/mods/27) is installed, a *Hide on ? (Unknown) nodes* toggle appears in the `Mods` settings tab. The mod runs fine without ModConfig (the toggle UI is simply skipped)
 
 ## How it works
 

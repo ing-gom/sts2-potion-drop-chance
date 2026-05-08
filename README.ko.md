@@ -23,6 +23,7 @@
 - **진입 가능한 노드만** — 지도 전체가 아닌, *바로 다음에 갈 수 있는* 노드에만 배지가 뜸
 - **로컬 + 읽기 전용** — 게임 상태 수정 없음, 네트워크 동기화 없음, 다른 플레이어에 영향 0
 - 매니페스트에 `"affects_gameplay": false` 표기 — 멀티플레이 중에도 안전
+- **선택적 ModConfig 지원** — [ModConfig](https://www.nexusmods.com/slaythespire2/mods/27) 가 설치되어 있으면 게임 설정의 `Mods` 탭에서 *Hide on ? (Unknown) nodes* 토글이 노출됩니다. ModConfig 미설치 환경에서도 모드는 정상 작동 (토글 UI 만 숨김)
 
 ## 작동 방식
 

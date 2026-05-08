@@ -3,7 +3,7 @@
   "name": "StS2 Potion Drop Chance",
   "author": "inggom",
   "description": "맵 화면에서 일반/엘리트/Unknown 노드 옆에 포션 드롭 확률을 배지로 표시. 본인 클라이언트에만 표시되며 다른 플레이어/게임 상태에 영향 없음 (read-only).",
-  "version": "v0.4.2",
+  "version": "v0.4.8",
   "has_pck": false,
   "has_dll": true,
   "dependencies": [],

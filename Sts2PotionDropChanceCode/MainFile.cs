@@ -22,9 +22,21 @@ public partial class MainFile : Node
             Logger.Info($"[{ModId}] Harmony patches applied.");
 
             if (Engine.GetMainLoop() is SceneTree tree)
+            {
                 MapBadgeService.Install(tree);
 
-            Logger.Info($"[{ModId}] initialized (v0.4.2).");
+                // Single watcher node owns modal-suppression bookkeeping for every
+                // badge in the tree. Lives at SceneTree.Root so it ticks regardless
+                // of which screen is currently active.
+                var watcher = new MapBadgeOverlayWatcher { Name = $"{ModId}_OverlayWatcher" };
+                tree.Root.CallDeferred(Node.MethodName.AddChild, watcher);
+
+                // Defer ModConfig registration to the next frame so other mods (in
+                // particular ModConfig itself) have finished their own Initialize.
+                tree.CreateTimer(0.0).Timeout += ModConfigBridge.TryRegister;
+            }
+
+            Logger.Info($"[{ModId}] initialized (v0.4.8).");
         }
         catch (Exception ex)
         {
