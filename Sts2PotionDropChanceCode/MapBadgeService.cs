@@ -1,5 +1,7 @@
 using System;
+using System.Reflection;
 using Godot;
+using HarmonyLib;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Nodes.Screens.Map;
@@ -22,6 +24,11 @@ internal static class MapBadgeService
 
     private static readonly bool _disabled =
         System.Environment.GetEnvironmentVariable("STS2_POTION_DROP_CHANCE_DISABLED") == "1";
+
+    // Lazily resolved — NMapScreen.IsTraveling visibility (public vs internal)
+    // isn't known at compile time, so we read it via reflection to stay robust.
+    private static MethodInfo? _isTravelingGetter;
+    private static bool _isTravelingResolved;
 
     public static void Install(SceneTree _) { /* Harmony-driven; no scene node needed. */ }
 
@@ -152,6 +159,46 @@ internal static class MapBadgeService
     {
         var existing = nmp.GetNodeOrNull<VBoxContainer>(ContainerName);
         if (existing != null) existing.Visible = false;
+    }
+
+    public static void HideAllBadgesIfTraveling(NMapPoint clicked)
+    {
+        if (_disabled) return;
+        try
+        {
+            Node? n = clicked;
+            while (n != null && n is not NMapScreen) n = n.GetParent();
+            if (n is not NMapScreen screen) return;
+            if (!IsTraveling(screen)) return;
+
+            HideAllBadgesUnder(screen);
+        }
+        catch (Exception ex)
+        {
+            MainFile.Logger.Warn($"[{MainFile.ModId}] hide-on-select failed: {ex.Message}");
+        }
+    }
+
+    private static bool IsTraveling(NMapScreen screen)
+    {
+        if (!_isTravelingResolved)
+        {
+            _isTravelingGetter = AccessTools.PropertyGetter(typeof(NMapScreen), "IsTraveling");
+            _isTravelingResolved = true;
+        }
+        if (_isTravelingGetter == null) return false;
+        return _isTravelingGetter.Invoke(screen, null) is true;
+    }
+
+    private static void HideAllBadgesUnder(Node root)
+    {
+        foreach (var child in root.GetChildren())
+        {
+            if (child.Name == ContainerName && child is VBoxContainer vbox)
+                vbox.Visible = false;
+            else if (child.GetChildCount() > 0)
+                HideAllBadgesUnder(child);
+        }
     }
 
     private static void RemoveContainer(NNormalMapPoint nmp)

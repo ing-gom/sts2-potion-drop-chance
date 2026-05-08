@@ -26,3 +26,14 @@ internal static class NMapPoint_RefreshVisuals_Patch
             MapBadgeService.EnsureBadgeUpdated(nmp);
     }
 }
+
+// OnRelease commits the click. If travel actually starts (screen.IsTraveling
+// flips true), sibling Travelable nodes' RefreshVisuals doesn't fire until
+// the screen transitions — leaving their badges visible during the fade.
+// Hide everything on the screen the moment travel begins.
+[HarmonyPatch(typeof(NMapPoint), "OnRelease")]
+internal static class NMapPoint_OnRelease_Patch
+{
+    private static void Postfix(NMapPoint __instance) =>
+        MapBadgeService.HideAllBadgesIfTraveling(__instance);
+}

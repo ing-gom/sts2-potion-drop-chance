@@ -24,7 +24,7 @@ public partial class MainFile : Node
             if (Engine.GetMainLoop() is SceneTree tree)
                 MapBadgeService.Install(tree);
 
-            Logger.Info($"[{ModId}] initialized (v0.4.1).");
+            Logger.Info($"[{ModId}] initialized (v0.4.2).");
         }
         catch (Exception ex)
         {
