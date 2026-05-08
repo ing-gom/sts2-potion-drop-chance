@@ -4,9 +4,9 @@
 
 > "방금 운이 나빴던 건가, pity가 낮은 건가?" 더 이상 추측하지 마세요 — 진로 결정 전에 실제 숫자를 보여드립니다.
 
-| 전투 노드 (50%) | Unknown(`?`) — 두 가지 가능성 |
-|---|---|
-| ![포션 아이콘과 50% 노란색 배지가 붙은 전투 노드](docs/screenshots/monster-badge.png) | ![몬스터 50% / 엘리트 63% 두 배지가 쌓인 Unknown 노드](docs/screenshots/unknown-badge.png) |
+![포션 드롭 확률 배지가 붙은 맵 — 좌하단 일반 몬스터 노드 63%, 우측 Unknown 노드는 몬스터 50% / 엘리트 63% 두 배지로 표시](docs/screenshots/unknown-badge.png)
+
+*좌하단: 일반 전투 노드에 `[포션] 63%` (라임). 우측: Unknown(`?`) 노드는 두 배지가 쌓여 있음 — `[몬스터][포션] 50%` (노랑) 위, `[엘리트][포션] 63%` (라임) 아래, 가정별 하나씩.*
 
 [English README](README.md)
 

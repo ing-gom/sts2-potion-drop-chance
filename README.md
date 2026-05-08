@@ -4,9 +4,9 @@ A **Slay the Spire 2** mod that shows the **potion drop probability** for each t
 
 > No more "did I just get unlucky, or is the pity counter low?" — see the actual number before you commit to a path.
 
-| Combat node (50%) | Unknown (`?`) — dual hypotheses |
-|---|---|
-| ![combat node with potion icon and 50% yellow badge](docs/screenshots/monster-badge.png) | ![unknown node with two stacked badges: monster 50%, elite 63%](docs/screenshots/unknown-badge.png) |
+![map with potion drop chance badges: bottom-left monster node 63%, right Unknown node with stacked monster 50% and elite 63% badges](docs/screenshots/unknown-badge.png)
+
+*Bottom-left: a regular Monster node with `[potion] 63%` (lime). Right: an Unknown (`?`) node with two stacked badges — `[monster][potion] 50%` (yellow) above `[elite][potion] 63%` (lime), one per outcome.*
 
 [한국어 README](README.ko.md)
 
