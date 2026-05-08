@@ -17,5 +17,6 @@ local.props
 # Logs / runtime artifacts
 *.log
 
-# Release zips at repo root
+# Release zips at repo root + staging dir used to build them
 /Sts2PotionDropChance-v*.zip
+/_release_staging/
