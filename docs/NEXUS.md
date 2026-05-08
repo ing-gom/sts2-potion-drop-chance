@@ -26,7 +26,7 @@ Slay the Spire 2 rolls potions at the [b]end[/b] of combat using a hidden pity c
 [*][b]Color-scaled[/b]: red → orange → yellow → lime → teal. Distinct enough to read at a glance without checking the number.
 [*][b]Travelable nodes only[/b] — badges only on nodes you can advance to next, not the whole map.
 [*][b]Hides automatically on menus[/b] (v0.4.8+) — when you open the Pause menu, Settings, Stats, Modding, Run History, Timeline, or any other in-game submenu / modal popup, the badges disappear so they don't bleed through the UI. They reappear when you return to the map.
-[*][b]Optional ModConfig integration[/b] (v0.4.8+) — if [url=https://www.nexusmods.com/slaythespire2/mods/27]ModConfig[/url] is installed, a [i]Hide on ? (Unknown) nodes[/i] toggle appears in the in-game [i]Settings → Mods[/i] tab and applies immediately. The mod runs unchanged without ModConfig (the toggle UI is simply skipped — no hard dependency).
+[*][b]Optional ModConfig integration[/b] (v0.4.8+) — if [url=https://www.nexusmods.com/slaythespire2/mods/27]ModConfig[/url] is installed, two options appear in the in-game [i]Settings → Mods[/i] tab and apply immediately: [i]Hide on ? (Unknown) nodes[/i] toggle and [i]Badge position[/i] dropdown (Right / Left / Above / Below). The mod runs unchanged without ModConfig (the UI is simply skipped — no hard dependency).
 [*][b]Local + read-only[/b]. No game state mutation, no network sync. The mod manifest declares [i]affects_gameplay: false[/i] — safe to leave installed in multiplayer.
 [*][b]Boss nodes are intentionally not annotated[/b] — fixed path, badge wouldn't change your decision.
 [/list]
@@ -50,7 +50,7 @@ The mod is fully client-side. Other players see an unmodified game — your DLL 
 
 [size=4][b]Configuration[/b][/size]
 [list]
-[*][b]In-game (recommended, v0.4.8+)[/b] — install [url=https://www.nexusmods.com/slaythespire2/mods/27]ModConfig[/url], then open [i]Settings → Mods → Potion Drop Chance[/i] and toggle [i]Hide on ? (Unknown) nodes[/i]. Changes apply immediately.
+[*][b]In-game (recommended, v0.4.8+)[/b] — install [url=https://www.nexusmods.com/slaythespire2/mods/27]ModConfig[/url], then open [i]Settings → Mods → Potion Drop Chance[/i] for the [i]Hide on ? (Unknown) nodes[/i] toggle and the [i]Badge position[/i] dropdown. Changes apply immediately.
 [*][b]Environment variable[/b] — set [i]STS2_POTION_DROP_CHANCE_DISABLED=1[/i] before launching the game to suppress all badges without uninstalling the mod.
 [/list]
 
@@ -86,7 +86,7 @@ Slay the Spire 2 는 전투가 [b]끝날 때[/b] 숨겨진 pity 카운터로 포
 [*][b]색상 스케일[/b]: 빨강 → 주황 → 노랑 → 라임 → 청록. 숫자 안 봐도 한눈에 위계 파악.
 [*][b]진입 가능한 노드만[/b] — 지도 전체가 아닌, 바로 다음에 갈 수 있는 노드에만 배지 표시.
 [*][b]메뉴 진입 시 자동 숨김[/b] (v0.4.8+) — 일시정지(중단), 설정, 통계, 모드 메뉴, 런 히스토리, 타임라인 등 인게임 서브메뉴 또는 modal popup 이 떠있는 동안 배지가 자동으로 숨겨집니다. 맵 화면으로 돌아오면 다시 표시.
-[*][b]선택적 ModConfig 지원[/b] (v0.4.8+) — [url=https://www.nexusmods.com/slaythespire2/mods/27]ModConfig[/url] 가 설치되어 있으면 게임 [i]설정 → Mods[/i] 탭에 [i]Hide on ? (Unknown) nodes[/i] 토글이 노출되고 변경 즉시 반영됩니다. ModConfig 미설치 환경에서도 모드는 정상 작동 (토글 UI 만 숨김 — 의존성 강제 없음).
+[*][b]선택적 ModConfig 지원[/b] (v0.4.8+) — [url=https://www.nexusmods.com/slaythespire2/mods/27]ModConfig[/url] 가 설치되어 있으면 게임 [i]설정 → Mods[/i] 탭에 두 가지 옵션이 노출되고 변경 즉시 반영됩니다: [i]Hide on ? (Unknown) nodes[/i] 토글 + [i]Badge position[/i] 드롭다운 (Right / Left / Above / Below). ModConfig 미설치 환경에서도 모드는 정상 작동 (UI 만 숨김 — 의존성 강제 없음).
 [*][b]로컬 + 읽기 전용[/b]. 게임 상태 수정 없음, 네트워크 동기화 없음. 매니페스트에 [i]affects_gameplay: false[/i] 표기 — 멀티플레이 중에도 안전.
 [*][b]보스 노드는 의도적으로 미표시[/b] — 경로가 정해져 있어 배지가 의사결정에 영향을 주지 않습니다.
 [/list]
@@ -110,7 +110,7 @@ Slay the Spire 2 는 전투가 [b]끝날 때[/b] 숨겨진 pity 카운터로 포
 
 [size=4][b]설정[/b][/size]
 [list]
-[*][b]인게임 설정 (권장, v0.4.8+)[/b] — [url=https://www.nexusmods.com/slaythespire2/mods/27]ModConfig[/url] 설치 후 [i]설정 → Mods → Potion Drop Chance[/i] 에서 [i]Hide on ? (Unknown) nodes[/i] 토글. 변경 즉시 반영.
+[*][b]인게임 설정 (권장, v0.4.8+)[/b] — [url=https://www.nexusmods.com/slaythespire2/mods/27]ModConfig[/url] 설치 후 [i]설정 → Mods → Potion Drop Chance[/i] 에서 [i]Hide on ? (Unknown) nodes[/i] 토글과 [i]Badge position[/i] 드롭다운 (Right / Left / Above / Below) 사용. 변경 즉시 반영.
 [*][b]환경 변수[/b] — 게임 실행 전 [i]STS2_POTION_DROP_CHANCE_DISABLED=1[/i] 설정 시 모든 배지 비활성화 (모드 제거 없이).
 [/list]
 

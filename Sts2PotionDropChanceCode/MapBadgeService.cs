@@ -31,6 +31,13 @@ internal static class MapBadgeService
     /// </summary>
     internal static volatile bool HideUnknownNodes;
 
+    internal enum BadgePosition { Right, Left, Above, Below }
+
+    /// <summary>
+    /// Where the badge appears relative to the map node. Toggled at runtime via ModConfig.
+    /// </summary>
+    internal static BadgePosition Position = BadgePosition.Right;
+
     /// <summary>
     /// Set by <see cref="MapBadgeOverlayWatcher"/> while any modal popup
     /// (Pause menu, Settings, confirm dialogs) is open — keeps the badge from
@@ -84,31 +91,70 @@ internal static class MapBadgeService
     private static VBoxContainer GetOrCreateContainer(NNormalMapPoint nmp)
     {
         var existing = nmp.GetNodeOrNull<VBoxContainer>(ContainerName);
-        if (existing != null) return existing;
+        if (existing != null)
+        {
+            // Re-apply layout in case Position changed since last refresh.
+            ApplyPosition(existing);
+            return existing;
+        }
 
-        // Anchor to node's right-center so the badge stays glued to the node regardless of icon size.
-        // GrowVertical=Both makes the VBox expand symmetrically around the anchor → vertically centered.
-        // ZIndex stays low (1) so any modal/popup in the same CanvasLayer paints over us; without
-        // this, popups like the in-game options panel would render *below* the badge.
+        // ZIndex stays low (1) so any modal/popup in the same CanvasLayer paints over us;
+        // without this, popups like the in-game options panel would render below the badge.
         var vbox = new VBoxContainer
         {
             Name = ContainerName,
             ZIndex = 1,
             MouseFilter = Control.MouseFilterEnum.Ignore,
-            AnchorLeft = 1.0f,
-            AnchorRight = 1.0f,
-            AnchorTop = 0.5f,
-            AnchorBottom = 0.5f,
-            OffsetLeft = GapToNodePx,
-            OffsetTop = 0,
-            OffsetRight = GapToNodePx,
-            OffsetBottom = 0,
-            GrowVertical = Control.GrowDirection.Both,
-            GrowHorizontal = Control.GrowDirection.End,
         };
+        ApplyPosition(vbox);
         vbox.AddThemeConstantOverride("separation", 4);
         nmp.AddChild(vbox);
         return vbox;
+    }
+
+    /// <summary>
+    /// Applies anchor + offset + grow direction to position the container relative to
+    /// its parent NMapPoint. Called both when the container is first created and when
+    /// the user toggles <see cref="Position"/> at runtime.
+    /// </summary>
+    private static void ApplyPosition(VBoxContainer vbox)
+    {
+        switch (Position)
+        {
+            case BadgePosition.Left:
+                vbox.AnchorLeft = 0f; vbox.AnchorRight = 0f;
+                vbox.AnchorTop = 0.5f; vbox.AnchorBottom = 0.5f;
+                vbox.OffsetLeft = -GapToNodePx; vbox.OffsetRight = -GapToNodePx;
+                vbox.OffsetTop = 0; vbox.OffsetBottom = 0;
+                vbox.GrowVertical = Control.GrowDirection.Both;
+                vbox.GrowHorizontal = Control.GrowDirection.Begin;
+                break;
+            case BadgePosition.Above:
+                vbox.AnchorLeft = 0.5f; vbox.AnchorRight = 0.5f;
+                vbox.AnchorTop = 0f; vbox.AnchorBottom = 0f;
+                vbox.OffsetLeft = 0; vbox.OffsetRight = 0;
+                vbox.OffsetTop = -GapToNodePx; vbox.OffsetBottom = -GapToNodePx;
+                vbox.GrowVertical = Control.GrowDirection.Begin;
+                vbox.GrowHorizontal = Control.GrowDirection.Both;
+                break;
+            case BadgePosition.Below:
+                vbox.AnchorLeft = 0.5f; vbox.AnchorRight = 0.5f;
+                vbox.AnchorTop = 1f; vbox.AnchorBottom = 1f;
+                vbox.OffsetLeft = 0; vbox.OffsetRight = 0;
+                vbox.OffsetTop = GapToNodePx; vbox.OffsetBottom = GapToNodePx;
+                vbox.GrowVertical = Control.GrowDirection.End;
+                vbox.GrowHorizontal = Control.GrowDirection.Both;
+                break;
+            case BadgePosition.Right:
+            default:
+                vbox.AnchorLeft = 1f; vbox.AnchorRight = 1f;
+                vbox.AnchorTop = 0.5f; vbox.AnchorBottom = 0.5f;
+                vbox.OffsetLeft = GapToNodePx; vbox.OffsetRight = GapToNodePx;
+                vbox.OffsetTop = 0; vbox.OffsetBottom = 0;
+                vbox.GrowVertical = Control.GrowDirection.Both;
+                vbox.GrowHorizontal = Control.GrowDirection.End;
+                break;
+        }
     }
 
     private static PanelContainer BuildRow(PotionDropCalculator.Result r, bool includeTypeIcon, SceneTree? tree)
