@@ -1,7 +1,6 @@
 using System;
 using Godot;
 using MegaCrit.Sts2.Core.Context;
-using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using MegaCrit.Sts2.Core.Runs;
@@ -9,47 +8,53 @@ using MegaCrit.Sts2.Core.Runs;
 namespace Sts2PotionDropChance;
 
 /// <summary>
-/// Owns badge UI logic. Patches call <see cref="EnsureBadgeUpdated"/> on a
-/// NMapPoint when its visuals refresh; we attach (or update) a child PanelContainer
-/// with the player's potion drop chance for that node. Idempotent — same call
-/// reuses the existing badge node.
+/// Owns badge UI lifecycle. Each travelable Monster/Elite/Unknown map point gets
+/// a VBoxContainer child holding 1–2 colored "row" badges (one per drop hypothesis).
 /// Disable via env var <c>STS2_POTION_DROP_CHANCE_DISABLED=1</c>.
 /// </summary>
 internal static class MapBadgeService
 {
-    private const string BadgeNodeName = "Sts2PotionDropChance_Badge";
-    private const string LabelNodeName = "Label";
+    private const string ContainerName = "Sts2PotionDropChance_Badge";
     private const int FontSize = 14;
+    private const int IconSize = 16;
     private const int CornerRadius = 4;
-    private const int PaddingPx = 4;
+
+    // Right-center offset from node origin. Map nodes anchor near (0,0); +40 puts the
+    // badges clearly to the right, -10 lifts the stack so a 2-row badge sits roughly
+    // centered against the node.
+    private static readonly Vector2 BadgeOffset = new(40, -10);
 
     private static readonly bool _disabled =
         System.Environment.GetEnvironmentVariable("STS2_POTION_DROP_CHANCE_DISABLED") == "1";
 
-    public static void Install(SceneTree _) { /* no scene-tree node needed; everything driven by Harmony */ }
+    public static void Install(SceneTree _) { /* Harmony-driven; no scene node needed. */ }
 
-    /// <summary>Called from NNormalMapPoint patches. Safe to call repeatedly.</summary>
+    /// <summary>Patches call this on every map-point visual refresh. Idempotent.</summary>
     public static void EnsureBadgeUpdated(NNormalMapPoint nmp)
     {
-        if (_disabled) { RemoveBadge(nmp); return; }
+        if (_disabled) { RemoveContainer(nmp); return; }
 
         try
         {
-            // Only show on nodes the player can travel to right now.
-            if (nmp.State != MapPointState.Travelable) { HideBadge(nmp); return; }
+            if (nmp.State != MapPointState.Travelable) { HideContainer(nmp); return; }
 
             var rm = RunManager.Instance;
             var state = rm?.State;
-            if (state == null || nmp.Point == null) { HideBadge(nmp); return; }
+            if (state == null || nmp.Point == null) { HideContainer(nmp); return; }
 
             var me = LocalContext.GetMe(state.Players);
-            if (me == null) { HideBadge(nmp); return; }
+            if (me == null) { HideContainer(nmp); return; }
 
-            var result = PotionDropCalculator.Compute(me, nmp.Point, state);
-            if (result == null) { HideBadge(nmp); return; }
+            var results = PotionDropCalculator.ComputeAll(me, nmp.Point, state);
+            if (results.Count == 0) { HideContainer(nmp); return; }
 
-            var badge = GetOrCreateBadge(nmp);
-            UpdateBadge(badge, result.Value);
+            var container = GetOrCreateContainer(nmp);
+            ClearChildren(container);
+
+            bool showTypeIcon = nmp.Point.PointType == MapPointType.Unknown;
+            foreach (var r in results)
+                container.AddChild(BuildRow(r, showTypeIcon, nmp.GetTree()));
+            container.Visible = true;
         }
         catch (Exception ex)
         {
@@ -57,22 +62,58 @@ internal static class MapBadgeService
         }
     }
 
-    private static PanelContainer GetOrCreateBadge(NNormalMapPoint nmp)
+    private static VBoxContainer GetOrCreateContainer(NNormalMapPoint nmp)
     {
-        var existing = nmp.GetNodeOrNull<PanelContainer>(BadgeNodeName);
+        var existing = nmp.GetNodeOrNull<VBoxContainer>(ContainerName);
         if (existing != null) return existing;
 
-        var panel = new PanelContainer
+        var vbox = new VBoxContainer
         {
-            Name = BadgeNodeName,
-            Position = new Vector2(28, -28),
+            Name = ContainerName,
+            Position = BadgeOffset,
             ZIndex = 100,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
+        vbox.AddThemeConstantOverride("separation", 2);
+        nmp.AddChild(vbox);
+        return vbox;
+    }
+
+    private static PanelContainer BuildRow(PotionDropCalculator.Result r, bool includeTypeIcon, SceneTree? tree)
+    {
+        var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        var bg = ColorScale.For(r.Probability);
+        bg.A = 0.92f;
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = bg,
+            CornerRadiusTopLeft = CornerRadius,
+            CornerRadiusTopRight = CornerRadius,
+            CornerRadiusBottomLeft = CornerRadius,
+            CornerRadiusBottomRight = CornerRadius,
+            ContentMarginLeft = 4,
+            ContentMarginRight = 4,
+            ContentMarginTop = 2,
+            ContentMarginBottom = 2,
+        });
+
+        var hbox = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        hbox.AddThemeConstantOverride("separation", 3);
+
+        if (includeTypeIcon)
+        {
+            var typeTex = r.Kind == PotionDropCalculator.NodeKind.Elite
+                ? MapIconLoader.Elite()
+                : MapIconLoader.Monster();
+            if (typeTex != null) hbox.AddChild(MakeIcon(typeTex));
+        }
+
+        var potionTex = PotionIconLoader.Get(tree);
+        if (potionTex != null) hbox.AddChild(MakeIcon(potionTex));
+
         var label = new Label
         {
-            Name = LabelNodeName,
-            HorizontalAlignment = HorizontalAlignment.Center,
+            Text = $"{r.Probability * 100f:0}%",
             VerticalAlignment = VerticalAlignment.Center,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
@@ -80,50 +121,35 @@ internal static class MapBadgeService
         label.AddThemeColorOverride("font_color", Colors.White);
         label.AddThemeColorOverride("font_outline_color", new Color(0, 0, 0, 0.7f));
         label.AddThemeConstantOverride("outline_size", 3);
-        panel.AddChild(label);
-        nmp.AddChild(panel);
+        hbox.AddChild(label);
+
+        panel.AddChild(hbox);
         return panel;
     }
 
-    private static void UpdateBadge(PanelContainer badge, PotionDropCalculator.Result r)
+    private static TextureRect MakeIcon(Texture2D tex) => new()
     {
-        var label = badge.GetNodeOrNull<Label>(LabelNodeName);
-        if (label == null) return;
+        Texture = tex,
+        StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        CustomMinimumSize = new Vector2(IconSize, IconSize),
+        ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        MouseFilter = Control.MouseFilterEnum.Ignore,
+    };
 
-        label.Text = FormatText(r);
-        var bgColor = ColorScale.For(r.Probability);
-        bgColor.A = 0.92f;
-        var stylebox = new StyleBoxFlat
-        {
-            BgColor = bgColor,
-            CornerRadiusTopLeft = CornerRadius,
-            CornerRadiusTopRight = CornerRadius,
-            CornerRadiusBottomLeft = CornerRadius,
-            CornerRadiusBottomRight = CornerRadius,
-            ContentMarginLeft = PaddingPx,
-            ContentMarginRight = PaddingPx,
-            ContentMarginTop = 2,
-            ContentMarginBottom = 2,
-        };
-        badge.AddThemeStyleboxOverride("panel", stylebox);
-        badge.Visible = true;
+    private static void ClearChildren(Node node)
+    {
+        foreach (var child in node.GetChildren()) child.QueueFree();
     }
 
-    private static string FormatText(PotionDropCalculator.Result r)
+    private static void HideContainer(NNormalMapPoint nmp)
     {
-        var pct = $"{r.Probability * 100f:0}%";
-        return r.Kind == PotionDropCalculator.NodeKind.UnknownAsMonster ? $"M:{pct}" : pct;
-    }
-
-    private static void HideBadge(NNormalMapPoint nmp)
-    {
-        var existing = nmp.GetNodeOrNull<PanelContainer>(BadgeNodeName);
+        var existing = nmp.GetNodeOrNull<VBoxContainer>(ContainerName);
         if (existing != null) existing.Visible = false;
     }
 
-    private static void RemoveBadge(NNormalMapPoint nmp)
+    private static void RemoveContainer(NNormalMapPoint nmp)
     {
-        var existing = nmp.GetNodeOrNull<PanelContainer>(BadgeNodeName);
+        var existing = nmp.GetNodeOrNull<VBoxContainer>(ContainerName);
         existing?.QueueFree();
     }
 }
