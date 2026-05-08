@@ -15,14 +15,10 @@ namespace Sts2PotionDropChance;
 internal static class MapBadgeService
 {
     private const string ContainerName = "Sts2PotionDropChance_Badge";
-    private const int FontSize = 14;
-    private const int IconSize = 16;
-    private const int CornerRadius = 4;
-
-    // Right-center offset from node origin. Map nodes anchor near (0,0); +40 puts the
-    // badges clearly to the right, -10 lifts the stack so a 2-row badge sits roughly
-    // centered against the node.
-    private static readonly Vector2 BadgeOffset = new(40, -10);
+    private const int FontSize = 20;
+    private const int IconSize = 28;
+    private const int CornerRadius = 6;
+    private const int GapToNodePx = 10;
 
     private static readonly bool _disabled =
         System.Environment.GetEnvironmentVariable("STS2_POTION_DROP_CHANCE_DISABLED") == "1";
@@ -67,14 +63,25 @@ internal static class MapBadgeService
         var existing = nmp.GetNodeOrNull<VBoxContainer>(ContainerName);
         if (existing != null) return existing;
 
+        // Anchor to node's right-center so the badge stays glued to the node regardless of icon size.
+        // GrowVertical=Both makes the VBox expand symmetrically around the anchor → vertically centered.
         var vbox = new VBoxContainer
         {
             Name = ContainerName,
-            Position = BadgeOffset,
             ZIndex = 100,
             MouseFilter = Control.MouseFilterEnum.Ignore,
+            AnchorLeft = 1.0f,
+            AnchorRight = 1.0f,
+            AnchorTop = 0.5f,
+            AnchorBottom = 0.5f,
+            OffsetLeft = GapToNodePx,
+            OffsetTop = 0,
+            OffsetRight = GapToNodePx,
+            OffsetBottom = 0,
+            GrowVertical = Control.GrowDirection.Both,
+            GrowHorizontal = Control.GrowDirection.End,
         };
-        vbox.AddThemeConstantOverride("separation", 2);
+        vbox.AddThemeConstantOverride("separation", 4);
         nmp.AddChild(vbox);
         return vbox;
     }
@@ -91,14 +98,14 @@ internal static class MapBadgeService
             CornerRadiusTopRight = CornerRadius,
             CornerRadiusBottomLeft = CornerRadius,
             CornerRadiusBottomRight = CornerRadius,
-            ContentMarginLeft = 4,
-            ContentMarginRight = 4,
-            ContentMarginTop = 2,
-            ContentMarginBottom = 2,
+            ContentMarginLeft = 6,
+            ContentMarginRight = 6,
+            ContentMarginTop = 4,
+            ContentMarginBottom = 4,
         });
 
         var hbox = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        hbox.AddThemeConstantOverride("separation", 3);
+        hbox.AddThemeConstantOverride("separation", 5);
 
         if (includeTypeIcon)
         {
