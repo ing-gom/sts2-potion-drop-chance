@@ -27,6 +27,18 @@ internal static class NMapPoint_RefreshVisuals_Patch
     }
 }
 
+// RefreshState writes the *base* _iconContainer.Scale (e.g. 0.55 under SmallerMap),
+// before _Process kicks in and oscillates it via sin(_elapsedTime). Capture the value
+// here — reading it later inside EnsureBadgeUpdated catches whatever phase the per-node
+// oscillation happens to be in, which makes sibling badges render at different sizes.
+// RefreshState is non-public in this assembly view, so reference it by string name.
+[HarmonyPatch(typeof(NNormalMapPoint), "RefreshState")]
+internal static class NNormalMapPoint_RefreshState_Patch
+{
+    private static void Postfix(NNormalMapPoint __instance) =>
+        MapBadgeService.CaptureBaseIconScale(__instance);
+}
+
 // OnRelease commits the click. If travel actually starts (screen.IsTraveling
 // flips true), sibling Travelable nodes' RefreshVisuals doesn't fire until
 // the screen transitions — leaving their badges visible during the fade.

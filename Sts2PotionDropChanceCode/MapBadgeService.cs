@@ -17,10 +17,19 @@ namespace Sts2PotionDropChance;
 internal static class MapBadgeService
 {
     private const string ContainerName = "Sts2PotionDropChance_Badge";
+    // Per-NNormalMapPoint meta key for the *base* _iconContainer.Scale captured at
+    // RefreshState time — bypasses the per-frame oscillation _Process applies for
+    // travelable nodes, which would otherwise make sibling badges render at different
+    // sizes depending on the sin-wave phase at the moment we read.
+    private const string IconScaleMetaKey = "Sts2PotionDropChance_BaseIconScale";
     private const int FontSize = 20;
     private const int IconSize = 28;
     private const int CornerRadius = 6;
     private const int GapToNodePx = 10;
+    // Above-specific extra gap. Visually the icon's drawn top sits slightly inside the
+    // rect's top edge (icon art doesn't fill the full Control), so a uniform 10px gap
+    // reads as too tight when the badge is placed above. Side/below placements look fine.
+    private const int AboveExtraGapPx = 0;
 
     private static readonly bool _disabled =
         System.Environment.GetEnvironmentVariable("STS2_POTION_DROP_CHANCE_DISABLED") == "1";
@@ -49,6 +58,13 @@ internal static class MapBadgeService
     // isn't known at compile time, so we read it via reflection to stay robust.
     private static MethodInfo? _isTravelingGetter;
     private static bool _isTravelingResolved;
+
+    // SmallerMap (and any sibling map-resize mod) shrinks NNormalMapPoint._iconContainer.Scale
+    // without changing the host node's Control rect — so our anchor-positioned badge would
+    // remain at original size while the visible icon shrinks. Mirror the icon's scale onto
+    // the badge container so it stays visually proportional.
+    private static FieldInfo? _iconContainerField;
+    private static bool _iconContainerFieldResolved;
 
     public static void Install(SceneTree _) { /* Harmony-driven; no scene node needed. */ }
 
@@ -80,6 +96,13 @@ internal static class MapBadgeService
             bool showTypeIcon = nmp.Point.PointType == MapPointType.Unknown;
             foreach (var r in results)
                 container.AddChild(BuildRow(r, showTypeIcon, nmp.GetTree()));
+
+            // iconScale governs both (a) where to anchor (visible icon edge, not rect edge)
+            // and (b) badge content scale. Computed per-call so runtime ModConfig changes propagate.
+            var iconScale = TryGetIconScale(nmp);
+            ApplyPosition(container, nmp, iconScale);
+            container.Scale = new Vector2(iconScale, iconScale);
+            container.PivotOffset = ComputePivotForBadge(container.GetCombinedMinimumSize());
             container.Visible = !_globalSuppress;
         }
         catch (Exception ex)
@@ -91,12 +114,7 @@ internal static class MapBadgeService
     private static VBoxContainer GetOrCreateContainer(NNormalMapPoint nmp)
     {
         var existing = nmp.GetNodeOrNull<VBoxContainer>(ContainerName);
-        if (existing != null)
-        {
-            // Re-apply layout in case Position changed since last refresh.
-            ApplyPosition(existing);
-            return existing;
-        }
+        if (existing != null) return existing; // EnsureBadgeUpdated reapplies position+scale every call.
 
         // ZIndex stays low (1) so any modal/popup in the same CanvasLayer paints over us;
         // without this, popups like the in-game options panel would render below the badge.
@@ -106,53 +124,53 @@ internal static class MapBadgeService
             ZIndex = 1,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        ApplyPosition(vbox);
         vbox.AddThemeConstantOverride("separation", 4);
         nmp.AddChild(vbox);
         return vbox;
     }
 
     /// <summary>
-    /// Applies anchor + offset + grow direction to position the container relative to
-    /// its parent NMapPoint. Called both when the container is first created and when
-    /// the user toggles <see cref="Position"/> at runtime.
+    /// Anchors the badge from the parent NMapPoint's center, offset by the visible icon's
+    /// half-extent (parent-rect-half × iconScale) plus a fixed gap. Anchoring from the
+    /// rect edge would leave a growing gap when sibling mods (SmallerMap etc.) shrink
+    /// _iconContainer.Scale without changing the host Control's Size — the rect edge stays
+    /// at the un-scaled position while the visible icon collapses inward.
     /// </summary>
-    private static void ApplyPosition(VBoxContainer vbox)
+    private static void ApplyPosition(VBoxContainer vbox, NNormalMapPoint nmp, float iconScale)
     {
+        var halfX = nmp.Size.X * 0.5f * iconScale;
+        var halfY = nmp.Size.Y * 0.5f * iconScale;
+
+        // Anchor at parent center for every position; offset carries direction + magnitude.
+        vbox.AnchorLeft = vbox.AnchorRight = 0.5f;
+        vbox.AnchorTop = vbox.AnchorBottom = 0.5f;
+
         switch (Position)
         {
             case BadgePosition.Left:
-                vbox.AnchorLeft = 0f; vbox.AnchorRight = 0f;
-                vbox.AnchorTop = 0.5f; vbox.AnchorBottom = 0.5f;
-                vbox.OffsetLeft = -GapToNodePx; vbox.OffsetRight = -GapToNodePx;
-                vbox.OffsetTop = 0; vbox.OffsetBottom = 0;
-                vbox.GrowVertical = Control.GrowDirection.Both;
+                vbox.OffsetLeft = vbox.OffsetRight = -(halfX + GapToNodePx);
+                vbox.OffsetTop = vbox.OffsetBottom = 0;
                 vbox.GrowHorizontal = Control.GrowDirection.Begin;
+                vbox.GrowVertical = Control.GrowDirection.Both;
                 break;
             case BadgePosition.Above:
-                vbox.AnchorLeft = 0.5f; vbox.AnchorRight = 0.5f;
-                vbox.AnchorTop = 0f; vbox.AnchorBottom = 0f;
-                vbox.OffsetLeft = 0; vbox.OffsetRight = 0;
-                vbox.OffsetTop = -GapToNodePx; vbox.OffsetBottom = -GapToNodePx;
-                vbox.GrowVertical = Control.GrowDirection.Begin;
+                vbox.OffsetLeft = vbox.OffsetRight = 0;
+                vbox.OffsetTop = vbox.OffsetBottom = -(halfY + GapToNodePx + AboveExtraGapPx);
                 vbox.GrowHorizontal = Control.GrowDirection.Both;
+                vbox.GrowVertical = Control.GrowDirection.Begin;
                 break;
             case BadgePosition.Below:
-                vbox.AnchorLeft = 0.5f; vbox.AnchorRight = 0.5f;
-                vbox.AnchorTop = 1f; vbox.AnchorBottom = 1f;
-                vbox.OffsetLeft = 0; vbox.OffsetRight = 0;
-                vbox.OffsetTop = GapToNodePx; vbox.OffsetBottom = GapToNodePx;
-                vbox.GrowVertical = Control.GrowDirection.End;
+                vbox.OffsetLeft = vbox.OffsetRight = 0;
+                vbox.OffsetTop = vbox.OffsetBottom = halfY + GapToNodePx;
                 vbox.GrowHorizontal = Control.GrowDirection.Both;
+                vbox.GrowVertical = Control.GrowDirection.End;
                 break;
             case BadgePosition.Right:
             default:
-                vbox.AnchorLeft = 1f; vbox.AnchorRight = 1f;
-                vbox.AnchorTop = 0.5f; vbox.AnchorBottom = 0.5f;
-                vbox.OffsetLeft = GapToNodePx; vbox.OffsetRight = GapToNodePx;
-                vbox.OffsetTop = 0; vbox.OffsetBottom = 0;
-                vbox.GrowVertical = Control.GrowDirection.Both;
+                vbox.OffsetLeft = vbox.OffsetRight = halfX + GapToNodePx;
+                vbox.OffsetTop = vbox.OffsetBottom = 0;
                 vbox.GrowHorizontal = Control.GrowDirection.End;
+                vbox.GrowVertical = Control.GrowDirection.Both;
                 break;
         }
     }
@@ -204,6 +222,44 @@ internal static class MapBadgeService
         panel.AddChild(hbox);
         return panel;
     }
+
+    /// <summary>Called from <c>NNormalMapPoint.RefreshState</c> postfix.</summary>
+    public static void CaptureBaseIconScale(NNormalMapPoint nmp)
+    {
+        nmp.SetMeta(IconScaleMetaKey, ReadLiveIconScale(nmp));
+    }
+
+    private static float TryGetIconScale(NNormalMapPoint nmp)
+    {
+        if (nmp.HasMeta(IconScaleMetaKey))
+            return (float)nmp.GetMeta(IconScaleMetaKey).AsSingle();
+        return ReadLiveIconScale(nmp);
+    }
+
+    private static float ReadLiveIconScale(NNormalMapPoint nmp)
+    {
+        if (!_iconContainerFieldResolved)
+        {
+            _iconContainerField = AccessTools.Field(typeof(NNormalMapPoint), "_iconContainer");
+            _iconContainerFieldResolved = true;
+        }
+        if (_iconContainerField == null) return 1f;
+        return _iconContainerField.GetValue(nmp) switch
+        {
+            Node2D n2d => n2d.Scale.X,
+            Control ctrl => ctrl.Scale.X,
+            _ => 1f,
+        };
+    }
+
+    private static Vector2 ComputePivotForBadge(Vector2 size) => Position switch
+    {
+        BadgePosition.Right => new Vector2(0, size.Y * 0.5f),
+        BadgePosition.Left => new Vector2(size.X, size.Y * 0.5f),
+        BadgePosition.Above => new Vector2(size.X * 0.5f, size.Y),
+        BadgePosition.Below => new Vector2(size.X * 0.5f, 0),
+        _ => Vector2.Zero,
+    };
 
     private static TextureRect MakeIcon(Texture2D tex) => new()
     {
