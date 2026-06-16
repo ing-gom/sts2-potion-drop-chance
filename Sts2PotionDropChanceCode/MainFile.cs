@@ -36,7 +36,7 @@ public partial class MainFile : Node
                 tree.CreateTimer(0.0).Timeout += ModConfigBridge.TryRegister;
             }
 
-            Logger.Info($"[{ModId}] initialized (v0.4.9).");
+            Logger.Info($"[{ModId}] initialized (v0.5.1).");
         }
         catch (Exception ex)
         {
